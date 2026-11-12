@@ -8,6 +8,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
+import 'package:public_file_saver/public_file_saver.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,8 +54,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _opCash = 0, _opBank = 0, _cash = 0, _bank = 0, _mChanda = 0, _mInc = 0, _mExp = 0;
   
   List<Map<String, dynamic>> _members = [], _cashList = [];
-  final GlobalKey _receiptKey = GlobalKey();
-  final GlobalKey _auditKey = GlobalKey();
 
   final List<String> _defaultInCats = ['জুমার সাপ্তাহিক কালেকশন','মসজিদে মেস/ম্যাচ ভাড়া','মেসের বিদ্যুৎ বিল আদায়','এককালীন দান / অনুদান','মাদ্রাসায় দান','মাদ্রাসার ছাত্রদের বেতন আদায়','মাসিক চাঁদা','রমজান ইফতার ও তারাবিহ ফান্ড','কোরবানির চামড়া বিক্রির অর্থ','ফিতরা ও সদকা','মসজিদ উন্নয়ন বিশেষ অনুদান','অন্যান্য আয়'];
   final List<String> _defaultOutCats = ['ইমাম সাহেবের বেতন','মুয়াজ্জিন সাহেবের বেতন','খাদেমের বেতন','বিদ্যুৎ বিল','পানির বিল','মসজিদ সংস্কার ও মেরামত','রমজান ইফতার ও তারাবিহ খরচ','পরিচ্ছন্নতা সামগ্রী','অন্যান্য ব্যয়'];
@@ -577,43 +576,64 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _exportBoundaryToPdf(GlobalKey key, String fileName, BuildContext ctx, String successMsg) async {
+    ui.Image? image;
     try {
-      RenderRepaintBoundary? b = key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (b == null) return;
-      ui.Image img = await b.toImage(pixelRatio: 2.5);
-      ByteData? bd = await img.toByteData(format: ui.ImageByteFormat.rawRgba);
-      if (bd == null) return;
-
-      final width = img.width;
-      final height = img.height;
-      final totalPixels = width * height;
-      final rgbBytes = Uint8List(totalPixels * 3);
-      final rgba = bd.buffer.asUint8List();
-
-      int rgbIdx = 0;
-      int rgbaIdx = 0;
-      for (int i = 0; i < totalPixels; i++) {
-        rgbBytes[rgbIdx++] = rgba[rgbaIdx];
-        rgbBytes[rgbIdx++] = rgba[rgbaIdx + 1];
-        rgbBytes[rgbIdx++] = rgba[rgbaIdx + 2];
-        rgbaIdx += 4;
+      // Dialog-এর RepaintBoundary পুরোপুরি paint হওয়া পর্যন্ত অপেক্ষা করি।
+      await WidgetsBinding.instance.endOfFrame;
+      final renderObject = key.currentContext?.findRenderObject();
+      if (renderObject is! RenderRepaintBoundary || !renderObject.attached) {
+        throw Exception('PDF-এর কনটেন্ট প্রস্তুত হয়নি। আবার চেষ্টা করুন।');
       }
 
-      final pdfBytes = _buildPdfFromRgb(width, height, rgbBytes);
-      final dir = Directory('/storage/emulated/0/Download');
-      if (await dir.exists()) {
-        final file = File('${dir.path}/$fileName.pdf');
-        await file.writeAsBytes(pdfBytes);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(successMsg)));
-        }
+      image = await renderObject.toImage(pixelRatio: 2.5);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      if (byteData == null) throw Exception('PDF ছবি তৈরি করা যায়নি।');
+
+      final width = image.width;
+      final height = image.height;
+      final rgba = byteData.buffer.asUint8List(
+        byteData.offsetInBytes,
+        byteData.lengthInBytes,
+      );
+      final rgbBytes = Uint8List(width * height * 3);
+      var sourceIndex = 0;
+      var targetIndex = 0;
+      for (var i = 0; i < width * height; i++) {
+        rgbBytes[targetIndex++] = rgba[sourceIndex++];
+        rgbBytes[targetIndex++] = rgba[sourceIndex++];
+        rgbBytes[targetIndex++] = rgba[sourceIndex++];
+        sourceIndex++; // Alpha বাদ
       }
-    } catch (_) {
+
+      final pdfBytes = Uint8List.fromList(_buildPdfFromRgb(width, height, rgbBytes));
+      final saved = await PublicFileSaver().save(
+        bytes: pdfBytes,
+        fileName: '$fileName.pdf',
+        mimeType: 'application/pdf',
+        subDir: 'Miapara',
+      );
+
+      if (!mounted) return;
+      if (saved != null && saved.isSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$successMsg Download/Miapara ফোল্ডারে পাওয়া যাবে।')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PDF সেভ হয়নি। আবার চেষ্টা করুন।')),
+        );
+      }
+    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF ডাউনলোডে সমস্যা হয়েছে!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF তৈরি বা সেভ করতে সমস্যা: $e')),
+        );
       }
+    } finally {
+      image?.dispose();
     }
   }
+
 void _addMember({Map<String, dynamic>? member}) {
     final slC = TextEditingController(text: member?['book_sl']?.toString() ?? '');
     final nC = TextEditingController(text: member?['name'] ?? '');
@@ -1112,12 +1132,14 @@ void _addMember({Map<String, dynamic>? member}) {
   }
 
   void _showReceipt(String name, dynamic phone, int amt, String rNo, String pText) {
+    // প্রতিটি রসিদের জন্য আলাদা key, যাতে পরের রসিদেও capture ঠিক থাকে।
+    final receiptKey = GlobalKey();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         contentPadding: EdgeInsets.zero,
         content: RepaintBoundary(
-          key: _receiptKey,
+          key: receiptKey,
           child: Container(
             width: 330, padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.teal.shade800, width: 2)),
@@ -1145,7 +1167,7 @@ void _addMember({Map<String, dynamic>? member}) {
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.teal[800], foregroundColor: Colors.white),
             icon: const Icon(Icons.picture_as_pdf, size: 14), label: const Text('PDF ডাউনলোড'),
-            onPressed: () => _exportBoundaryToPdf(_receiptKey, 'Miapara_Receipt_$rNo', context, 'রশিদ PDF Download ফোল্ডারে সেভ হয়েছে!'),
+            onPressed: () => _exportBoundaryToPdf(receiptKey, 'Miapara_Receipt_$rNo', context, 'রশিদ PDF Download ফোল্ডারে সেভ হয়েছে!'),
           ),
         ],
       ),
@@ -1658,57 +1680,14 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('মিয়াপাড়া কেন্দ্রীয় জামে মসজিদ', style: TextStyle(fontSize: 15, color: Colors.white)),
+        centerTitle: true,
+        toolbarHeight: 64,
+        title: const Text(
+          'মিয়াপাড়া কেন্দ্রীয় জামে মসজিদ',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, height: 1.2),
+        ),
         backgroundColor: Colors.teal[800],
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.lock_outline, color: Colors.white, size: 20),
-            onPressed: () {
-              final pC = TextEditingController(text: _pin);
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('পিন কোড সেট'),
-                  content: TextField(controller: pC, keyboardType: TextInputType.number, maxLength: 4, obscureText: true, decoration: const InputDecoration(labelText: '৪ সংখ্যার পিন (মুছতে খালি রাখুন)')),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('বাতিল')),
-                    ElevatedButton(onPressed: () async {
-                      _pin = pC.text.trim();
-                      await _db!.insert('settings', {'key': 'app_pin', 'value': _pin}, conflictAlgorithm: ConflictAlgorithm.replace);
-                      Navigator.pop(ctx);
-                    }, child: const Text('সেভ')),
-                  ],
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.account_balance_wallet, color: Colors.amber, size: 20),
-            onPressed: () {
-              final cC = TextEditingController(text: (_opCash ~/ 100).toString());
-              final bC = TextEditingController(text: (_opBank ~/ 100).toString());
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('শুরুর তহবিল নির্ধারণ'),
-                  content: Column(mainAxisSize: MainAxisSize.min, children: [
-                    TextField(controller: cC, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'পূর্বে ক্যাশে কত ছিল')),
-                    TextField(controller: bC, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'পূর্বে ব্যাংকে কত ছিল')),
-                  ]),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('বাতিল')),
-                    ElevatedButton(onPressed: () async {
-                      await _db!.insert('settings', {'key': 'opening_cash', 'value': ((int.tryParse(cC.text) ?? 0) * 100).toString()}, conflictAlgorithm: ConflictAlgorithm.replace);
-                      await _db!.insert('settings', {'key': 'opening_bank', 'value': ((int.tryParse(bC.text) ?? 0) * 100).toString()}, conflictAlgorithm: ConflictAlgorithm.replace);
-                      Navigator.pop(ctx);
-                      _refresh();
-                    }, child: const Text('সেভ')),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _tab, selectedItemColor: Colors.teal[800],
@@ -1730,6 +1709,76 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
       child: Column(children: [Text(t, style: const TextStyle(fontSize: 9, color: Colors.white70)), Text(v, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: c))]),
     ),
   );
+
+  void _showPinSettings() {
+    final pC = TextEditingController(text: _pin);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('পিন কোড সেট'),
+        content: TextField(
+          controller: pC,
+          keyboardType: TextInputType.number,
+          maxLength: 4,
+          obscureText: true,
+          decoration: const InputDecoration(labelText: '৪ সংখ্যার পিন (মুছতে খালি রাখুন)'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('বাতিল')),
+          ElevatedButton(
+            onPressed: () async {
+              _pin = pC.text.trim();
+              await _db!.insert(
+                'settings',
+                {'key': 'app_pin', 'value': _pin},
+                conflictAlgorithm: ConflictAlgorithm.replace,
+              );
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('সেভ'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showOpeningFundsSettings() {
+    final cC = TextEditingController(text: (_opCash ~/ 100).toString());
+    final bC = TextEditingController(text: (_opBank ~/ 100).toString());
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('শুরুর তহবিল নির্ধারণ'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: cC, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'পূর্বে ক্যাশে কত ছিল')),
+            TextField(controller: bC, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'পূর্বে ব্যাংকে কত ছিল')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('বাতিল')),
+          ElevatedButton(
+            onPressed: () async {
+              await _db!.insert(
+                'settings',
+                {'key': 'opening_cash', 'value': ((int.tryParse(cC.text) ?? 0) * 100).toString()},
+                conflictAlgorithm: ConflictAlgorithm.replace,
+              );
+              await _db!.insert(
+                'settings',
+                {'key': 'opening_bank', 'value': ((int.tryParse(bC.text) ?? 0) * 100).toString()},
+                conflictAlgorithm: ConflictAlgorithm.replace,
+              );
+              if (ctx.mounted) Navigator.pop(ctx);
+              _refresh();
+            },
+            child: const Text('সেভ'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildBody() {
     if (_tab == 0) return _buildChandaTab();
@@ -2107,13 +2156,14 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
   );
 
   void _showAuditPdfDialog(List<Map<String, Object?>> incs, List<Map<String, Object?>> exps) {
+    final auditKey = GlobalKey();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         contentPadding: const EdgeInsets.all(10),
         content: SingleChildScrollView(
           child: RepaintBoundary(
-            key: _auditKey,
+            key: auditKey,
             child: Container(
               width: 340, padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.teal.shade800, width: 2)),
@@ -2176,7 +2226,7 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.teal[800], foregroundColor: Colors.white),
             icon: const Icon(Icons.picture_as_pdf, size: 14), label: const Text('PDF ডাউনলোড'),
-            onPressed: () => _exportBoundaryToPdf(_auditKey, 'Miapara_Audit_${_cYear}_$_cMonth', context, 'অডিট স্টেটমেন্ট PDF Download ফোল্ডারে সেভ হয়েছে!'),
+            onPressed: () => _exportBoundaryToPdf(auditKey, 'Miapara_Audit_${_cYear}_$_cMonth', context, 'অডিট স্টেটমেন্ট PDF Download ফোল্ডারে সেভ হয়েছে!'),
           ),
         ],
       ),
@@ -2237,6 +2287,35 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                 ),
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Card(
+          color: Colors.white,
+          child: Column(
+            children: [
+              const ListTile(
+                dense: true,
+                leading: Icon(Icons.tune, color: Colors.teal),
+                title: Text('অ্যাপ সেটিংস', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                subtitle: Text('পিন কোড ও শুরুর তহবিল', style: TextStyle(fontSize: 10)),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.lock_outline, color: Colors.teal),
+                title: const Text('পিন কোড সেট / পরিবর্তন', style: TextStyle(fontSize: 12)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _showPinSettings,
+              ),
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.account_balance_wallet, color: Colors.amber),
+                title: const Text('শুরুর তহবিল নির্ধারণ', style: TextStyle(fontSize: 12)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _showOpeningFundsSettings,
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 10),
