@@ -1132,47 +1132,155 @@ void _addMember({Map<String, dynamic>? member}) {
   }
 
   void _showReceipt(String name, dynamic phone, int amt, String rNo, String pText) {
-    // প্রতিটি রসিদের জন্য আলাদা key, যাতে পরের রসিদেও capture ঠিক থাকে।
+    // প্রতিটি রসিদের জন্য আলাদা key; PDF capture-এর স্থিতিশীলতা বজায় থাকবে।
     final receiptKey = GlobalKey();
+    final now = DateTime.now();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        contentPadding: EdgeInsets.zero,
-        content: RepaintBoundary(
-          key: receiptKey,
-          child: Container(
-            width: 330, padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.teal.shade800, width: 2)),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('মিয়াপাড়া কেন্দ্রীয় জামে মসজিদ', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.teal)),
-                const Text('চাঁদা আদায় রসিদ', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                const Divider(),
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('রসিদ: $rNo', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)), Text('তারিখ: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}', style: const TextStyle(fontSize: 10))]),
-                const SizedBox(height: 4),
-                Align(alignment: Alignment.centerLeft, child: Text('চাঁদাদাতা: $name', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                if (phone != null && phone.toString().isNotEmpty) Align(alignment: Alignment.centerLeft, child: Text('মোবাইল: ${BHelper.toBn(phone)}', style: const TextStyle(fontSize: 10))),
-                const SizedBox(height: 6),
-                Container(
-                  width: double.infinity, padding: const EdgeInsets.all(8), color: Colors.teal.shade50,
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('বিবরণ: $pText', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)), const SizedBox(height: 2), Text('মোট জমা: ${BHelper.taka(amt)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.teal))]),
-                ),
-              ],
+        backgroundColor: const Color(0xFFF7FAF8),
+        contentPadding: const EdgeInsets.all(12),
+        content: SingleChildScrollView(
+          child: RepaintBoundary(
+            key: receiptKey,
+            child: Container(
+              width: 350,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFD5B66B), width: 1.4),
+                boxShadow: const [BoxShadow(color: Color(0x140D513F), blurRadius: 12, offset: Offset(0, 4))],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(colors: [Color(0xFF075B46), Color(0xFF138568)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(9),
+                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.14), shape: BoxShape.circle, border: Border.all(color: const Color(0xFFDCC477), width: 1.2)),
+                          child: const Icon(Icons.mosque, color: Color(0xFFFFE7A0), size: 27),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text('মিয়াপাড়া কেন্দ্রীয় জামে মসজিদ', textAlign: TextAlign.center, style: TextStyle(fontSize: 17, height: 1.35, fontWeight: FontWeight.bold, color: Colors.white)),
+                        const SizedBox(height: 3),
+                        const Text('চাঁদা আদায়ের রসিদ', style: TextStyle(fontSize: 12, color: Color(0xFFE7F4EE), letterSpacing: 0.4)),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(15, 13, 15, 15),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: _receiptInfoPill('রসিদ নম্বর', rNo)),
+                            const SizedBox(width: 8),
+                            Expanded(child: _receiptInfoPill('তারিখ', '\${BHelper.toBn(now.day)}/\${BHelper.toBn(now.month)}/\${BHelper.toBn(now.year)}')),
+                          ],
+                        ),
+                        const SizedBox(height: 13),
+                        const Text('জমাদানকারীর তথ্য', style: TextStyle(fontSize: 11, color: Color(0xFF8A7540), fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 5),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(11),
+                          decoration: BoxDecoration(color: const Color(0xFFF3F8F5), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE0EAE3))),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF174D3E))),
+                              if (phone != null && phone.toString().isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Row(children: [
+                                  const Icon(Icons.phone_android, size: 14, color: Color(0xFF648276)),
+                                  const SizedBox(width: 5),
+                                  Text(BHelper.toBn(phone), style: const TextStyle(fontSize: 11, color: Color(0xFF52675E))),
+                                ]),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: const Color(0xFFFFFBF0), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE9D9A6))),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('জমার বিবরণ', style: TextStyle(fontSize: 11, color: Color(0xFF8A7540), fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 5),
+                              Text(pText, style: const TextStyle(fontSize: 12, height: 1.4, color: Color(0xFF394B43), fontWeight: FontWeight.w600)),
+                              const Divider(color: Color(0xFFE7D9B4), height: 18),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('সর্বমোট জমা', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF315A49))),
+                                  Text(BHelper.taka(amt), style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold, color: Color(0xFF087653))),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Column(children: [
+                              Container(width: 105, height: 1, color: const Color(0xFF9AA99F)),
+                              const SizedBox(height: 5),
+                              const Text('গ্রহণকারীর স্বাক্ষর', style: TextStyle(fontSize: 9, color: Color(0xFF718078))),
+                            ]),
+                            Column(children: [
+                              Container(width: 105, height: 1, color: const Color(0xFF9AA99F)),
+                              const SizedBox(height: 5),
+                              const Text('দাতার স্বাক্ষর', style: TextStyle(fontSize: 9, color: Color(0xFF718078))),
+                            ]),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        const Center(child: Text('আল্লাহ আপনাকে উত্তম প্রতিদান দান করুন', style: TextStyle(fontSize: 10, color: Color(0xFF8A7540), fontStyle: FontStyle.italic))),
+                      ],
+                    ),
+                  ),
+                  Container(height: 5, decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF0B624B), Color(0xFFD6B65E), Color(0xFF0B624B)]), borderRadius: BorderRadius.vertical(bottom: Radius.circular(15)))),
+                ],
+              ),
             ),
           ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('বন্ধ')),
           ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal[800], foregroundColor: Colors.white),
-            icon: const Icon(Icons.picture_as_pdf, size: 14), label: const Text('PDF ডাউনলোড'),
-            onPressed: () => _exportBoundaryToPdf(receiptKey, 'Miapara_Receipt_$rNo', context, 'রশিদ PDF Download ফোল্ডারে সেভ হয়েছে!'),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0B624B), foregroundColor: Colors.white),
+            icon: const Icon(Icons.picture_as_pdf, size: 15),
+            label: const Text('PDF ডাউনলোড'),
+            onPressed: () => _exportBoundaryToPdf(receiptKey, 'Miapara_Receipt_$rNo', context, 'রসিদ PDF Download/Miapara ফোল্ডারে সেভ হয়েছে!'),
           ),
         ],
       ),
     );
   }
+
+  Widget _receiptInfoPill(String label, String value) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+    decoration: BoxDecoration(color: const Color(0xFFF5F7F5), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE4E9E4))),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: const TextStyle(fontSize: 9, color: Color(0xFF77847C))),
+      const SizedBox(height: 2),
+      Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF234B3C))),
+    ]),
+  );
 void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
     final cCtrl = TextEditingController();
     showDialog(
@@ -2157,65 +2265,122 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
 
   void _showAuditPdfDialog(List<Map<String, Object?>> incs, List<Map<String, Object?>> exps) {
     final auditKey = GlobalKey();
+    final now = DateTime.now();
+    Widget amountRow(String label, int amount, Color color, {bool strong = false}) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: TextStyle(fontSize: strong ? 11 : 10, color: const Color(0xFF43574D), fontWeight: strong ? FontWeight.bold : FontWeight.normal))),
+          Text('৳ \${BHelper.toBn(amount ~/ 100)}', style: TextStyle(fontSize: strong ? 12 : 10, color: color, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+    Widget categorySection(String title, List<Map<String, Object?>> rows, Color accent, int total, IconData icon) => Container(
+      margin: const EdgeInsets.only(top: 10),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE3EAE4))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+            decoration: BoxDecoration(color: accent.withOpacity(0.09), borderRadius: const BorderRadius.vertical(top: Radius.circular(9))),
+            child: Row(children: [
+              Icon(icon, size: 15, color: accent),
+              const SizedBox(width: 6),
+              Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: accent)),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(11, 5, 11, 9),
+            child: Column(
+              children: [
+                if (rows.isEmpty) const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('এই মাসে কোনো তথ্য নেই', style: TextStyle(fontSize: 10, color: Color(0xFF8A9690)))),
+                ...rows.map((r) => amountRow(r['category'].toString(), (r['s'] as int?) ?? 0, accent)),
+                const Divider(color: Color(0xFFE6ECE7), height: 12),
+                amountRow('মোট $title', total, accent, strong: true),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFFF5F8F6),
         contentPadding: const EdgeInsets.all(10),
         content: SingleChildScrollView(
           child: RepaintBoundary(
             key: auditKey,
             child: Container(
-              width: 340, padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.teal.shade800, width: 2)),
+              width: 360,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFD7BD75), width: 1.3)),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Center(
-                    child: Column(children: [
-                      const Text('মিয়াপাড়া কেন্দ্রীয় জামে মসজিদ', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.teal)),
-                      Text('মাসিক অডিট স্টেটমেন্ট — ${BHelper.mNames[_cMonth]} $_cYear', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      Text('রিপোর্ট তৈরির তারিখ: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}', style: const TextStyle(fontSize: 9, color: Colors.grey)),
-                    ]),
-                  ),
-                  const Divider(thickness: 1.5),
-                  const Text('আয়ের বিবরণী:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green)),
-                  ...incs.map((r) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 1),
-                    child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      Text('• ${r['category']}', style: const TextStyle(fontSize: 10)),
-                      Text('৳ ${BHelper.toBn((r['s'] as int) ~/ 100)}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                    ]),
-                  )),
-                  Align(alignment: Alignment.centerRight, child: Text('মোট আয়: ৳ ${BHelper.toBn(_mInc ~/ 100)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green))),
-                  const Divider(),
-                  const Text('ব্যয়ের বিবরণী:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.redAccent)),
-                  ...exps.map((r) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 1),
-                    child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      Text('• ${r['category']}', style: const TextStyle(fontSize: 10)),
-                      Text('৳ ${BHelper.toBn((r['s'] as int) ~/ 100)}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                    ]),
-                  )),
-                  Align(alignment: Alignment.centerRight, child: Text('মোট ব্যয়: ৳ ${BHelper.toBn(_mExp ~/ 100)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.redAccent))),
-                  const Divider(thickness: 1.5),
                   Container(
-                    width: double.infinity, padding: const EdgeInsets.all(6),
-                    color: Colors.teal.shade50,
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('হাতে নগদ স্থিতি: ৳ ${BHelper.toBn(_cash ~/ 100)}', style: const TextStyle(fontSize: 10)),
-                      Text('ব্যাংক স্থিতি: ৳ ${BHelper.toBn(_bank ~/ 100)}', style: const TextStyle(fontSize: 10)),
-                      Text('সর্বমোট তহবিল: ৳ ${BHelper.toBn((_cash + _bank) ~/ 100)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.teal)),
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(12, 15, 12, 13),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(colors: [Color(0xFF075B46), Color(0xFF138568)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                      borderRadius: BorderRadius.all(Radius.circular(10)),
+                    ),
+                    child: Column(children: [
+                      const Icon(Icons.mosque, size: 25, color: Color(0xFFFFE7A0)),
+                      const SizedBox(height: 5),
+                      const Text('মিয়াপাড়া কেন্দ্রীয় জামে মসজিদ', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, height: 1.3, fontWeight: FontWeight.bold, color: Colors.white)),
+                      const SizedBox(height: 3),
+                      Text('মাসিক আয়-ব্যয়ের বিবরণী', style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.9))),
+                      const SizedBox(height: 5),
+                      Text('\${BHelper.mNames[_cMonth]} \${BHelper.toBn(_cYear)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFFFE7A0))),
                     ]),
                   ),
-                  const SizedBox(height: 16),
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('ক্যাশিয়ার স্বাক্ষর', style: TextStyle(fontSize: 8, color: Colors.grey)),
-                      Text('সভাপতি / সম্পাদক স্বাক্ষর', style: TextStyle(fontSize: 8, color: Colors.grey)),
-                    ],
+                  const SizedBox(height: 9),
+                  Align(alignment: Alignment.centerRight, child: Text('প্রস্তুতের তারিখ: \${BHelper.toBn(now.day)}/\${BHelper.toBn(now.month)}/\${BHelper.toBn(now.year)}', style: const TextStyle(fontSize: 9, color: Color(0xFF7B8981)))),
+                  const SizedBox(height: 5),
+                  Row(children: [
+                    Expanded(child: _statementSummaryTile('মোট আয়', BHelper.taka(_mInc), const Color(0xFF16845F), Icons.trending_up)),
+                    const SizedBox(width: 6),
+                    Expanded(child: _statementSummaryTile('মোট ব্যয়', BHelper.taka(_mExp), const Color(0xFFC45B50), Icons.trending_down)),
+                  ]),
+                  const SizedBox(height: 6),
+                  Row(children: [
+                    Expanded(child: _statementSummaryTile('হাতে নগদ', BHelper.taka(_cash), const Color(0xFF286B9A), Icons.payments_outlined)),
+                    const SizedBox(width: 6),
+                    Expanded(child: _statementSummaryTile('ব্যাংক স্থিতি', BHelper.taka(_bank), const Color(0xFF8A7134), Icons.account_balance_outlined)),
+                  ]),
+                  categorySection('আয়ের বিবরণী', incs, const Color(0xFF16845F), _mInc, Icons.south_west),
+                  categorySection('ব্যয়ের বিবরণী', exps, const Color(0xFFC45B50), _mExp, Icons.north_east),
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(top: 10),
+                    padding: const EdgeInsets.all(11),
+                    decoration: BoxDecoration(color: const Color(0xFFFFFBF0), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE8D9AD)),
+                    ),
+                    child: Row(children: [
+                      const Expanded(child: Text('সর্বমোট তহবিল', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF66552A)))),
+                      Text(BHelper.taka(_cash + _bank), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0B624B))),
+                    ]),
                   ),
+                  const SizedBox(height: 23),
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    Column(children: [
+                      Container(width: 105, height: 1, color: const Color(0xFF9AA99F)),
+                      const SizedBox(height: 5),
+                      const Text('হিসাব প্রস্তুতকারীর স্বাক্ষর', style: TextStyle(fontSize: 8, color: Color(0xFF718078))),
+                    ]),
+                    Column(children: [
+                      Container(width: 105, height: 1, color: const Color(0xFF9AA99F)),
+                      const SizedBox(height: 5),
+                      const Text('সভাপতি / সম্পাদকের স্বাক্ষর', style: TextStyle(fontSize: 8, color: Color(0xFF718078))),
+                    ]),
+                  ]),
+                  const SizedBox(height: 11),
+                  const Center(child: Text('স্বচ্ছতা ও আমানতদারিতায় আমাদের অঙ্গীকার', style: TextStyle(fontSize: 9, color: Color(0xFF8A7540), fontStyle: FontStyle.italic))),
                 ],
               ),
             ),
@@ -2224,14 +2389,29 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('বন্ধ')),
           ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal[800], foregroundColor: Colors.white),
-            icon: const Icon(Icons.picture_as_pdf, size: 14), label: const Text('PDF ডাউনলোড'),
-            onPressed: () => _exportBoundaryToPdf(auditKey, 'Miapara_Audit_${_cYear}_$_cMonth', context, 'অডিট স্টেটমেন্ট PDF Download ফোল্ডারে সেভ হয়েছে!'),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0B624B), foregroundColor: Colors.white),
+            icon: const Icon(Icons.picture_as_pdf, size: 15),
+            label: const Text('PDF ডাউনলোড'),
+            onPressed: () => _exportBoundaryToPdf(auditKey, 'Miapara_Audit_\${_cYear}_\${_cMonth}', context, 'অডিট স্টেটমেন্ট PDF Download/Miapara ফোল্ডারে সেভ হয়েছে!'),
           ),
         ],
       ),
     );
   }
+
+  Widget _statementSummaryTile(String label, String value, Color color, IconData icon) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+    decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(9), border: Border.all(color: color.withOpacity(0.22))),
+    child: Row(children: [
+      Icon(icon, size: 17, color: color),
+      const SizedBox(width: 6),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: const TextStyle(fontSize: 9, color: Color(0xFF748078))),
+        const SizedBox(height: 2),
+        Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
+      ])),
+    ]),
+  );
 
   Widget _buildAuditTab() {
     return ListView(
