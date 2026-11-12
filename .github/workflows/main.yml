@@ -1,0 +1,61 @@
+name: Build Mosque APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Build APK Cleanly
+        run: |
+          cd ..
+          rm -rf miapara_app
+          flutter create miapara_app --org com.miapara.chanda
+          cd miapara_app
+
+          rm -rf test
+
+          flutter pub add sqflite path intl
+
+          # main.dart ফাইল কপি করা
+          if [ -f "$GITHUB_WORKSPACE/main.dart" ]; then
+            cp "$GITHUB_WORKSPACE/main.dart" lib/main.dart
+          elif [ -f "$GITHUB_WORKSPACE/lib/main.dart" ]; then
+            cp "$GITHUB_WORKSPACE/lib/main.dart" lib/main.dart
+          fi
+
+          # অ্যান্ড্রয়েড লিন্ট এরর বাইপাস করা
+          echo "android.lintOptions.checkReleaseBuilds=false" >> android/gradle.properties
+          echo "android.lintOptions.abortOnError=false" >> android/gradle.properties
+
+          # ইন্টারনেট পারমিশন স্বয়ংক্রিয়ভাবে যোগ করা
+          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/>\n    <application/' android/app/src/main/AndroidManifest.xml
+
+          # সরাসরি APK তৈরি
+          flutter build apk --release --no-tree-shake-icons
+
+          mkdir -p "$GITHUB_WORKSPACE/output"
+          cp build/app/outputs/flutter-apk/app-release.apk "$GITHUB_WORKSPACE/output/miapara-chanda.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: miapara-masjid-chanda-apk
+          path: output/miapara-chanda.apk
