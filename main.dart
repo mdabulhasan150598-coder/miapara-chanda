@@ -20,6 +20,27 @@ class BHelper {
   static const mNames = ['','জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
   static String toBn(dynamic n) => n == null ? '০' : n.toString().split('').map((c) => bn[c] ?? c).join('');
   static String taka(int p) => '৳ ${toBn(p ~/ 100)}';
+  static const _numberWords = <String>['শূন্য','এক','দুই','তিন','চার','পাঁচ','ছয়','সাত','আট','নয়','দশ','এগারো','বারো','তেরো','চৌদ্দ','পনেরো','ষোলো','সতেরো','আঠারো','উনিশ','বিশ','একুশ','বাইশ','তেইশ','চব্বিশ','পঁচিশ','ছাব্বিশ','সাতাশ','আটাশ','ঊনত্রিশ','ত্রিশ','একত্রিশ','বত্রিশ','তেত্রিশ','চৌত্রিশ','পঁয়ত্রিশ','ছত্রিশ','সাঁইত্রিশ','আটত্রিশ','ঊনচল্লিশ','চল্লিশ','একচল্লিশ','বিয়াল্লিশ','তেতাল্লিশ','চুয়াল্লিশ','পঁয়তাল্লিশ','ছেচল্লিশ','সাতচল্লিশ','আটচল্লিশ','ঊনপঞ্চাশ','পঞ্চাশ','একান্ন','বাহান্ন','তিপ্পান্ন','চুয়ান্ন','পঞ্চান্ন','ছাপ্পান্ন','সাতান্ন','আটান্ন','ঊনষাট','ষাট','একষট্টি','বাষট্টি','তেষট্টি','চৌষট্টি','পঁয়ষট্টি','ছেষট্টি','সাতষট্টি','আটষট্টি','ঊনসত্তর','সত্তর','একাত্তর','বাহাত্তর','তিয়াত্তর','চুয়াত্তর','পঁচাত্তর','ছিয়াত্তর','সাতাত্তর','আটাত্তর','ঊনআশি','আশি','একাশি','বিরাশি','তিরাশি','চুরাশি','পঁচাশি','ছিয়াশি','সাতাশি','আটাশি','ঊননব্বই','নব্বই','একানব্বই','বিরানব্বই','তিরানব্বই','চুরানব্বই','পঁচানব্বই','ছিয়ানব্বই','সাতানব্বই','আটানব্বই','নিরানব্বই'];
+  static String _underThousand(int n) {
+    if (n < 100) return _numberWords[n];
+    final h = n ~/ 100, r = n % 100;
+    return '${_numberWords[h]}শত${r == 0 ? '' : ' ${_numberWords[r]}'}';
+  }
+  static String numberWords(int n) {
+    if (n <= 0) return 'শূন্য';
+    final parts = <String>[];
+    void add(int unit, String label) {
+      final q = n ~/ unit;
+      if (q > 0) { parts.add('${_underThousand(q)} $label'); n %= unit; }
+    }
+    add(10000000, 'কোটি');
+    add(100000, 'লাখ');
+    add(1000, 'হাজার');
+    if (n > 0) parts.add(_underThousand(n));
+    return parts.join(' ');
+  }
+  static String amountInWords(int paisa) => '${numberWords(paisa ~/ 100)} টাকা মাত্র';
+
 }
 
 class MiaparaApp extends StatelessWidget {
@@ -538,7 +559,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
     const double pageW = 595.0;
     const double pageH = 842.0;
-    const double margin = 20.0;
+    const double margin = 28.0;
     const double maxW = pageW - (margin * 2);
     const double maxH = pageH - (margin * 2);
 
@@ -1188,7 +1209,7 @@ void _addMember({Map<String, dynamic>? member}) {
                           ],
                         ),
                         const SizedBox(height: 13),
-                        const Text('জমাদানকারীর তথ্য', style: TextStyle(fontSize: 11, color: Color(0xFF8A7540), fontWeight: FontWeight.bold)),
+                        const Text('দান কারীর তথ্য', style: TextStyle(fontSize: 11, color: Color(0xFF8A7540), fontWeight: FontWeight.bold)),
                         const SizedBox(height: 5),
                         Container(
                           width: double.infinity,
@@ -1197,6 +1218,8 @@ void _addMember({Map<String, dynamic>? member}) {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              const Text('দাতার নাম', style: TextStyle(fontSize: 9, color: Color(0xFF77847C), fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 2),
                               Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF174D3E))),
                               if (phone != null && phone.toString().isNotEmpty) ...[
                                 const SizedBox(height: 4),
@@ -1217,17 +1240,19 @@ void _addMember({Map<String, dynamic>? member}) {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('জমার বিবরণ', style: TextStyle(fontSize: 11, color: Color(0xFF8A7540), fontWeight: FontWeight.bold)),
+                              const Text('দানের বিবরণ', style: TextStyle(fontSize: 11, color: Color(0xFF8A7540), fontWeight: FontWeight.bold)),
                               const SizedBox(height: 5),
                               Text(pText, style: const TextStyle(fontSize: 12, height: 1.4, color: Color(0xFF394B43), fontWeight: FontWeight.w600)),
                               const Divider(color: Color(0xFFE7D9B4), height: 18),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text('সর্বমোট জমা', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF315A49))),
+                                  const Text('দানের পরিমাণ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF315A49))),
                                   Text(BHelper.taka(amt), style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold, color: Color(0xFF087653))),
                                 ],
                               ),
+                              const SizedBox(height: 5),
+                              Text('কথায়: ${BHelper.amountInWords(amt)}', style: const TextStyle(fontSize: 10, height: 1.4, color: Color(0xFF52675E), fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ),
@@ -2066,6 +2091,11 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
 
                 return ListTile(
                   dense: true, visualDensity: const VisualDensity(vertical: -1),
+                  tileColor: paidThisMonth ? const Color(0xFFE4F4E9) : null,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9),
+                    side: paidThisMonth ? const BorderSide(color: Color(0xFF9ACDAB), width: 0.8) : BorderSide.none,
+                  ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                   onTap: () => _openPassbook(m),
                   leading: Container(
