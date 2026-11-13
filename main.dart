@@ -553,7 +553,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   Future<void> _pickJsonBackupAndRestore() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
         withData: true,
