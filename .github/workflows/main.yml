@@ -32,7 +32,7 @@ jobs:
 
           rm -rf test
 
-          flutter pub add sqflite path intl public_file_saver
+          flutter pub add sqflite path intl public_file_saver file_picker
 
           # main.dart ফাইল কপি করা
           if [ -f "$GITHUB_WORKSPACE/main.dart" ]; then
