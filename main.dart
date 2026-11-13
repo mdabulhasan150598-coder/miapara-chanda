@@ -1339,6 +1339,7 @@ void _addMember({Map<String, dynamic>? member}) {
               ),
             ),
           ),
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('বন্ধ')),
@@ -2472,6 +2473,7 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                 ],
               ),
             ),
+          ),
           ),
         ),
         actions: [
