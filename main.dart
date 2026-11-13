@@ -9,7 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
 import 'package:public_file_saver/public_file_saver.dart';
-import 'package:file_picker/file_picker.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -553,14 +552,18 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   Future<void> _pickJsonBackupAndRestore() async {
     try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
-      );
-      if (result == null || result.files.isEmpty) return;
-      final picked = result.files.single;
-      final bytes = picked.bytes ??
-          (picked.path != null ? await File(picked.path!).readAsBytes() : null);
+      final result = await const MethodChannel('miapara/file_picker')
+          .invokeMapMethod<String, dynamic>('pickJsonBackup');
+      if (result == null) return;
+
+      final fileName = result['name'] as String? ?? 'backup.json';
+      final rawBytes = result['bytes'];
+      final Uint8List? bytes = rawBytes is Uint8List
+          ? rawBytes
+          : rawBytes is List
+              ? Uint8List.fromList(rawBytes.cast<int>())
+              : null;
+
       if (bytes == null || bytes.isEmpty) {
         throw const FormatException('ফাইলটি পড়া যাচ্ছে না।');
       }
@@ -574,7 +577,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('JSON ব্যাকআপ রিস্টোর করবেন?'),
-          content: Text('${picked.name} ফাইল থেকে তথ্য ফিরিয়ে আনা হবে। এতে এই ফোনের বর্তমান হিসাব ব্যাকআপের তথ্য দিয়ে প্রতিস্থাপিত হবে।'),
+          content: Text('$fileName ফাইল থেকে তথ্য ফিরিয়ে আনা হবে। এতে এই ফোনের বর্তমান হিসাব ব্যাকআপের তথ্য দিয়ে প্রতিস্থাপিত হবে।'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('বাতিল')),
             ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('রিস্টোর করুন')),
