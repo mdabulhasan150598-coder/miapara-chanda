@@ -1216,10 +1216,12 @@ void _addMember({Map<String, dynamic>? member}) {
         backgroundColor: const Color(0xFFF7FAF8),
         contentPadding: const EdgeInsets.all(12),
         content: SingleChildScrollView(
-          child: RepaintBoundary(
-            key: receiptKey,
-            child: Container(
-              width: 350,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: RepaintBoundary(
+              key: receiptKey,
+              child: Container(
+                width: 539,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
@@ -2396,10 +2398,12 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
         backgroundColor: const Color(0xFFF5F8F6),
         contentPadding: const EdgeInsets.all(10),
         content: SingleChildScrollView(
-          child: RepaintBoundary(
-            key: auditKey,
-            child: Container(
-              width: 360,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: RepaintBoundary(
+              key: auditKey,
+              child: Container(
+                width: 539,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFD7BD75), width: 1.3)),
               child: Column(
