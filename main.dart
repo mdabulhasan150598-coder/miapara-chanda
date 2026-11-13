@@ -1184,7 +1184,7 @@ void _addMember({Map<String, dynamic>? member}) {
                           children: [
                             Expanded(child: _receiptInfoPill('রসিদ নম্বর', rNo)),
                             const SizedBox(width: 8),
-                            Expanded(child: _receiptInfoPill('তারিখ', '\${BHelper.toBn(now.day)}/\${BHelper.toBn(now.month)}/\${BHelper.toBn(now.year)}')),
+                            Expanded(child: _receiptInfoPill('তারিখ', '${BHelper.toBn(now.day)}/${BHelper.toBn(now.month)}/${BHelper.toBn(now.year)}')),
                           ],
                         ),
                         const SizedBox(height: 13),
@@ -2271,7 +2271,7 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
       child: Row(
         children: [
           Expanded(child: Text(label, style: TextStyle(fontSize: strong ? 11 : 10, color: const Color(0xFF43574D), fontWeight: strong ? FontWeight.bold : FontWeight.normal))),
-          Text('৳ \${BHelper.toBn(amount ~/ 100)}', style: TextStyle(fontSize: strong ? 12 : 10, color: color, fontWeight: FontWeight.bold)),
+          Text('৳ ${BHelper.toBn(amount ~/ 100)}', style: TextStyle(fontSize: strong ? 12 : 10, color: color, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -2336,11 +2336,11 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                       const SizedBox(height: 3),
                       Text('মাসিক আয়-ব্যয়ের বিবরণী', style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.9))),
                       const SizedBox(height: 5),
-                      Text('\${BHelper.mNames[_cMonth]} \${BHelper.toBn(_cYear)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFFFE7A0))),
+                      Text('${BHelper.mNames[_cMonth]} ${BHelper.toBn(_cYear)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFFFE7A0))),
                     ]),
                   ),
                   const SizedBox(height: 9),
-                  Align(alignment: Alignment.centerRight, child: Text('প্রস্তুতের তারিখ: \${BHelper.toBn(now.day)}/\${BHelper.toBn(now.month)}/\${BHelper.toBn(now.year)}', style: const TextStyle(fontSize: 9, color: Color(0xFF7B8981)))),
+                  Align(alignment: Alignment.centerRight, child: Text('প্রস্তুতের তারিখ: ${BHelper.toBn(now.day)}/${BHelper.toBn(now.month)}/${BHelper.toBn(now.year)}', style: const TextStyle(fontSize: 9, color: Color(0xFF7B8981)))),
                   const SizedBox(height: 5),
                   Row(children: [
                     Expanded(child: _statementSummaryTile('মোট আয়', BHelper.taka(_mInc), const Color(0xFF16845F), Icons.trending_up)),
@@ -2392,7 +2392,7 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0B624B), foregroundColor: Colors.white),
             icon: const Icon(Icons.picture_as_pdf, size: 15),
             label: const Text('PDF ডাউনলোড'),
-            onPressed: () => _exportBoundaryToPdf(auditKey, 'Miapara_Audit_\${_cYear}_\${_cMonth}', context, 'অডিট স্টেটমেন্ট PDF Download/Miapara ফোল্ডারে সেভ হয়েছে!'),
+            onPressed: () => _exportBoundaryToPdf(auditKey, 'Miapara_Audit_${_cYear}_${_cMonth}', context, 'অডিট স্টেটমেন্ট PDF Download/Miapara ফোল্ডারে সেভ হয়েছে!'),
           ),
         ],
       ),
