@@ -556,7 +556,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
-        withData: true,
       );
       if (result == null || result.files.isEmpty) return;
       final picked = result.files.single;
