@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
 import 'package:public_file_saver/public_file_saver.dart';
+import 'package:file_picker/file_picker.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -457,86 +458,137 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _restoreFromJsonString(String str) async {
+  Future<bool> _restoreFromJsonString(String str) async {
     try {
-      final m = jsonDecode(str.trim());
-      if (m['app'] == 'miapara_master_v8') {
-        await _db!.execute('CREATE TABLE IF NOT EXISTS members (id INTEGER PRIMARY KEY AUTOINCREMENT, book_sl INTEGER, name TEXT, phone TEXT, address TEXT DEFAULT "", monthly_rate INTEGER, member_type TEXT DEFAULT "MONTHLY", status TEXT DEFAULT "ACTIVE")');
-        await _db!.execute('CREATE TABLE IF NOT EXISTS collections (id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER, year INTEGER, month INTEGER, amount INTEGER, receipt_no TEXT, date TEXT, type TEXT, note TEXT)');
-        await _db!.execute('CREATE TABLE IF NOT EXISTS cashbook (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, category TEXT, amount INTEGER, payment_method TEXT, voucher_no TEXT, date TEXT, note TEXT)');
-        await _db!.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)');
-        await _db!.execute('CREATE TABLE IF NOT EXISTS custom_categories (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, name TEXT UNIQUE)');
-        await _db!.execute('CREATE TABLE IF NOT EXISTS cashbook_items (id INTEGER PRIMARY KEY AUTOINCREMENT, cashbook_id INTEGER, title TEXT, amount INTEGER, date TEXT)');
-
-        await _db!.delete('members');
-        await _db!.delete('collections');
-        await _db!.delete('cashbook');
-        // ব্যাকআপ রিস্টোর করলেও এই ফোনের Telegram credentials অক্ষত থাকবে।
-        await _db!.delete(
-          'settings',
-          where: 'key NOT IN (?, ?)',
-          whereArgs: ['telegram_bot_token', 'telegram_chat_id'],
-        );
-        await _db!.delete('custom_categories');
-        await _db!.delete('cashbook_items');
-
-        if (m['members'] != null) {
-          const mCols = {'id', 'book_sl', 'name', 'phone', 'address', 'monthly_rate', 'member_type', 'status'};
-          for (var r in m['members']) {
-            final row = Map<String, dynamic>.from(r)..removeWhere((k, v) => !mCols.contains(k));
-            await _db!.insert('members', row, conflictAlgorithm: ConflictAlgorithm.replace);
-          }
-        }
-
-        if (m['collections'] != null) {
-          const cCols = {'id', 'member_id', 'year', 'month', 'amount', 'receipt_no', 'date', 'type', 'note'};
-          for (var r in m['collections']) {
-            final row = Map<String, dynamic>.from(r)..removeWhere((k, v) => !cCols.contains(k));
-            await _db!.insert('collections', row, conflictAlgorithm: ConflictAlgorithm.replace);
-          }
-        }
-
-        if (m['cashbook'] != null) {
-          const cbCols = {'id', 'type', 'category', 'amount', 'payment_method', 'voucher_no', 'date', 'note'};
-          for (var r in m['cashbook']) {
-            final row = Map<String, dynamic>.from(r)..removeWhere((k, v) => !cbCols.contains(k));
-            await _db!.insert('cashbook', row, conflictAlgorithm: ConflictAlgorithm.replace);
-          }
-        }
-
-        if (m['settings'] != null) {
-          const sCols = {'key', 'value'};
-          for (var r in m['settings']) {
-            final row = Map<String, dynamic>.from(r)..removeWhere((k, v) => !sCols.contains(k));
-            await _db!.insert('settings', row, conflictAlgorithm: ConflictAlgorithm.replace);
-          }
-        }
-
-        if (m['cashbook_items'] != null) {
-          for (var r in m['cashbook_items']) {
-            await _db!.insert('cashbook_items', Map<String, dynamic>.from(r), conflictAlgorithm: ConflictAlgorithm.replace);
-          }
-        }
-
-        if (m['custom_categories'] != null) {
-          for (var r in m['custom_categories']) {
-            await _db!.insert('custom_categories', Map<String, dynamic>.from(r), conflictAlgorithm: ConflictAlgorithm.replace);
-          }
-        }
-
-        _refresh();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('আলহামদুলিল্লাহ! সকল ডাটা সফলভাবে রিস্টোর হয়েছে!')),
-          );
-        }
-      } else {
-        throw 'ব্যাকআপ ফাইলের ভার্সন মেলেনি।';
+      final decoded = jsonDecode(str.trim());
+      if (decoded is! Map) throw const FormatException('JSON ফাইলের গঠন সঠিক নয়।');
+      final m = Map<String, dynamic>.from(decoded);
+      if (m['app'] != 'miapara_master_v8') {
+        throw const FormatException('ব্যাকআপ ফাইলের ভার্সন মেলেনি।');
       }
+
+      // আগে সব টেবিলের তথ্য যাচাই করা হয়; ভুল JSON হলে বর্তমান ডাটা ছোঁয়া হবে না।
+      List<Map<String, dynamic>> readRows(String key) {
+        final value = m[key];
+        if (value == null) return <Map<String, dynamic>>[];
+        if (value is! List) throw FormatException('$key অংশটি সঠিক নয়।');
+        return value.map((item) {
+          if (item is! Map) throw FormatException('$key অংশে ভুল রেকর্ড আছে।');
+          return Map<String, dynamic>.from(item);
+        }).toList();
+      }
+
+      final members = readRows('members');
+      final collections = readRows('collections');
+      final cashbook = readRows('cashbook');
+      final settings = readRows('settings');
+      final cashbookItems = readRows('cashbook_items');
+      final customCategories = readRows('custom_categories');
+
+      // একক transaction: মাঝপথে কোনো সমস্যা হলে আগের ডাটা স্বয়ংক্রিয়ভাবে ফিরে থাকবে।
+      await _db!.transaction((txn) async {
+        await txn.execute('CREATE TABLE IF NOT EXISTS members (id INTEGER PRIMARY KEY AUTOINCREMENT, book_sl INTEGER, name TEXT, phone TEXT, address TEXT DEFAULT "", monthly_rate INTEGER, member_type TEXT DEFAULT "MONTHLY", status TEXT DEFAULT "ACTIVE")');
+        await txn.execute('CREATE TABLE IF NOT EXISTS collections (id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER, year INTEGER, month INTEGER, amount INTEGER, receipt_no TEXT, date TEXT, type TEXT, note TEXT)');
+        await txn.execute('CREATE TABLE IF NOT EXISTS cashbook (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, category TEXT, amount INTEGER, payment_method TEXT, voucher_no TEXT, date TEXT, note TEXT)');
+        await txn.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)');
+        await txn.execute('CREATE TABLE IF NOT EXISTS custom_categories (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, name TEXT UNIQUE)');
+        await txn.execute('CREATE TABLE IF NOT EXISTS cashbook_items (id INTEGER PRIMARY KEY AUTOINCREMENT, cashbook_id INTEGER, title TEXT, amount INTEGER, date TEXT)');
+
+        await txn.delete('members');
+        await txn.delete('collections');
+        await txn.delete('cashbook');
+        await txn.delete('settings',
+          where: 'key NOT IN (?, ?)',
+          whereArgs: ['telegram_bot_token', 'telegram_chat_id']);
+        await txn.delete('custom_categories');
+        await txn.delete('cashbook_items');
+
+        const mCols = {'id', 'book_sl', 'name', 'phone', 'address', 'monthly_rate', 'member_type', 'status'};
+        for (final r in members) {
+          final row = Map<String, dynamic>.from(r)..removeWhere((k, v) => !mCols.contains(k));
+          await txn.insert('members', row, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+        const cCols = {'id', 'member_id', 'year', 'month', 'amount', 'receipt_no', 'date', 'type', 'note'};
+        for (final r in collections) {
+          final row = Map<String, dynamic>.from(r)..removeWhere((k, v) => !cCols.contains(k));
+          await txn.insert('collections', row, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+        const cbCols = {'id', 'type', 'category', 'amount', 'payment_method', 'voucher_no', 'date', 'note'};
+        for (final r in cashbook) {
+          final row = Map<String, dynamic>.from(r)..removeWhere((k, v) => !cbCols.contains(k));
+          await txn.insert('cashbook', row, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+        const sCols = {'key', 'value'};
+        for (final r in settings) {
+          final row = Map<String, dynamic>.from(r)..removeWhere((k, v) =>
+            !sCols.contains(k) || k == 'telegram_bot_token' || k == 'telegram_chat_id');
+          if (row.isNotEmpty) {
+            await txn.insert('settings', row, conflictAlgorithm: ConflictAlgorithm.replace);
+          }
+        }
+        for (final r in cashbookItems) {
+          await txn.insert('cashbook_items', r, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+        for (final r in customCategories) {
+          await txn.insert('custom_categories', r, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+      });
+
+      await _refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('আলহামদুলিল্লাহ! সকল ডাটা সফলভাবে রিস্টোর হয়েছে!')),
+        );
+      }
+      return true;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('রিস্টোর করতে সমস্যা: $e')),
+        );
+      }
+      return false;
+    }
+  }
+
+  Future<void> _pickJsonBackupAndRestore() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final picked = result.files.single;
+      final bytes = picked.bytes ??
+          (picked.path != null ? await File(picked.path!).readAsBytes() : null);
+      if (bytes == null || bytes.isEmpty) {
+        throw const FormatException('ফাইলটি পড়া যাচ্ছে না।');
+      }
+      final jsonText = utf8.decode(bytes, allowMalformed: false);
+      final preview = jsonDecode(jsonText);
+      if (preview is! Map || preview['app'] != 'miapara_master_v8') {
+        throw const FormatException('এটি মিয়াপাড়া মসজিদের সঠিক JSON ব্যাকআপ নয়।');
+      }
+      if (!mounted) return;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('JSON ব্যাকআপ রিস্টোর করবেন?'),
+          content: Text('${picked.name} ফাইল থেকে তথ্য ফিরিয়ে আনা হবে। এতে এই ফোনের বর্তমান হিসাব ব্যাকআপের তথ্য দিয়ে প্রতিস্থাপিত হবে।'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('বাতিল')),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('রিস্টোর করুন')),
+          ],
+        ),
+      );
+      if (confirmed == true && mounted) {
+        await _restoreFromJsonString(jsonText);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('JSON ফাইল পড়তে সমস্যা: $e')),
         );
       }
     }
@@ -2576,6 +2628,15 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
         ),
 
         const SizedBox(height: 8),
+
+        ListTile(
+          tileColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          leading: const Icon(Icons.folder_open, color: Colors.green),
+          title: const Text('JSON ফাইল থেকে সরাসরি রিস্টোর করুন', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+          subtitle: const Text('ফোন থেকে .json ব্যাকআপ ফাইল নির্বাচন করে ডাটা ফিরিয়ে আনুন', style: TextStyle(fontSize: 9)),
+          onTap: _pickJsonBackupAndRestore,
+        ),
 
         ListTile(
           tileColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
