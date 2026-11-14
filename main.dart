@@ -2260,10 +2260,12 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
               children: [
                 // মাস নির্বাচন ও নগদ আদায়—দুই পাশে সমান প্রস্থ
                 Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.max,
-                    children: [
+                  child: Transform.translate(
+                    offset: const Offset(-22, 0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
                       IconButton(
                         icon: const Icon(Icons.chevron_left, size: 22),
                         padding: EdgeInsets.zero,
@@ -2305,7 +2307,8 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                           _refresh();
                         },
                       ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
