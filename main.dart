@@ -188,6 +188,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         if (!memberColumns.any((c) => c['name'] == 'skip_until')) {
           await db.execute("ALTER TABLE members ADD COLUMN skip_until TEXT DEFAULT ''");
         }
+        if (!memberColumns.any((c) => c['name'] == 'skip_visit_period')) {
+          await db.execute("ALTER TABLE members ADD COLUMN skip_visit_period TEXT DEFAULT ''");
+        }
         // বাৎসরিক ধার্যকে পূর্ণ টাকায় স্থিতিশীল রাখতে ভাগের ভগ্নাংশ সমন্বয়।
         final yearlyMembers = await db.query('members', where: 'member_type=?', whereArgs: ['YEARLY']);
         for (final member in yearlyMembers) {
@@ -256,6 +259,13 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _bank = _opBank + bIn - bOut + tB - tC;
 
     final mp = '$_cYear-${_cMonth.toString().padLeft(2, '0')}';
+    // "এই মাসে যাব না" অবস্থা শুধু নির্বাচিত মাসের জন্য; মাস বদলালে নিজে থেকেই সক্রিয় হবে।
+    await _db!.update(
+      'members',
+      {'status': 'ACTIVE', 'skip_visit_period': ''},
+      where: "status=? AND COALESCE(skip_visit_period, '') != ?",
+      whereArgs: ['NO_VISIT', mp],
+    );
     _mChanda = (await _db!.rawQuery("SELECT COALESCE(SUM(amount),0) as s FROM collections WHERE substr(date,1,7)=?", [mp])).first['s'] as int;
     _mInc = (await _db!.rawQuery("SELECT COALESCE(SUM(amount),0) as s FROM cashbook WHERE type='INCOME' AND substr(date,1,7)=?", [mp])).first['s'] as int;
     _mExp = (await _db!.rawQuery("SELECT COALESCE(SUM(amount),0) as s FROM cashbook WHERE type='EXPENSE' AND substr(date,1,7)=?", [mp])).first['s'] as int;
@@ -825,7 +835,13 @@ void _addMember({Map<String, dynamic>? member}) {
                 ),
                 if (member != null) DropdownButtonFormField<String>(
                   value: st, decoration: const InputDecoration(labelText: 'অবস্থা'),
-                  items: const [DropdownMenuItem(value: 'ACTIVE', child: Text('সক্রিয়')), DropdownMenuItem(value: 'RELOCATED', child: Text('স্থানান্তরিত')), DropdownMenuItem(value: 'DECEASED', child: Text('মরহুম')), DropdownMenuItem(value: 'CLOSED', child: Text('ফাঁকা/বন্ধ'))],
+                  items: const [
+                    DropdownMenuItem(value: 'ACTIVE', child: Text('সক্রিয়')),
+                    DropdownMenuItem(value: 'RELOCATED', child: Text('স্থানান্তরিত')),
+                    DropdownMenuItem(value: 'DECEASED', child: Text('মরহুম')),
+                    DropdownMenuItem(value: 'CLOSED', child: Text('ফাঁকা/বন্ধ')),
+                    DropdownMenuItem(value: 'NO_VISIT', child: Text('এই মাসে যাব না')),
+                  ],
                   onChanged: (v) => setD(() => st = v!),
                 ),
                 TextField(controller: rC, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: type == 'YEARLY' ? 'বাৎসরিক চাঁদা (টাকা)' : 'মাসিক চাঁদা (টাকা)')),
@@ -840,9 +856,9 @@ void _addMember({Map<String, dynamic>? member}) {
                 int bSl = int.tryParse(slC.text) ?? (_members.length + 1);
                 int mR = type == 'YEARLY' ? (((int.tryParse(rC.text) ?? 2400) * 100 + 11) ~/ 12) : ((int.tryParse(rC.text) ?? 200) * 100);
                 if (member == null) {
-                  await _db!.insert('members', {'book_sl': bSl, 'name': nC.text.trim(), 'phone': pC.text.trim(), 'address': addressC.text.trim(), 'monthly_rate': mR, 'member_type': type, 'status': st});
+                  await _db!.insert('members', {'book_sl': bSl, 'name': nC.text.trim(), 'phone': pC.text.trim(), 'address': addressC.text.trim(), 'monthly_rate': mR, 'member_type': type, 'status': st, 'skip_visit_period': st == 'NO_VISIT' ? '${_cYear}-${_cMonth.toString().padLeft(2, '0')}' : ''});
                 } else {
-                  await _db!.update('members', {'book_sl': bSl, 'name': nC.text.trim(), 'phone': pC.text.trim(), 'address': addressC.text.trim(), 'monthly_rate': mR, 'member_type': type, 'status': st}, where: 'id=?', whereArgs: [member['id']]);
+                  await _db!.update('members', {'book_sl': bSl, 'name': nC.text.trim(), 'phone': pC.text.trim(), 'address': addressC.text.trim(), 'monthly_rate': mR, 'member_type': type, 'status': st, 'skip_visit_period': st == 'NO_VISIT' ? '${_cYear}-${_cMonth.toString().padLeft(2, '0')}' : ''}, where: 'id=?', whereArgs: [member['id']]);
                 }
                 Navigator.pop(ctx);
                 _refresh();
@@ -2331,21 +2347,20 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                 final st = m['status'];
                 final bSl = m['book_sl'] ?? (idx + 1);
                 final paidThisMonth = m['paid_this_month'] as bool? ?? false;
-                final skipUntil = (m['skip_until'] ?? '').toString();
                 final currentPeriod = '${_cYear}-${_cMonth.toString().padLeft(2, '0')}';
-                final isVisitDeferred = skipUntil.isNotEmpty && skipUntil.compareTo(currentPeriod) >= 0;
+                final isNoVisitThisMonth = st == 'NO_VISIT' && (m['skip_visit_period'] ?? '') == currentPeriod;
 
                 return Card(
                   margin: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   elevation: 1.5,
                   shadowColor: const Color(0xFF174D43).withOpacity(0.10),
-                  color: paidThisMonth ? const Color(0xFFE8F6EC) : Colors.white,
+                  color: paidThisMonth ? const Color(0xFFE8F6EC) : (isNoVisitThisMonth ? const Color(0xFFF1ECFF) : Colors.white),
                   surfaceTintColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                     side: BorderSide(
-                      color: paidThisMonth ? const Color(0xFF9ACDAB) : const Color(0xFFE5ECE9),
-                      width: paidThisMonth ? 1.1 : 0.7,
+                      color: paidThisMonth ? const Color(0xFF9ACDAB) : (isNoVisitThisMonth ? const Color(0xFFC7B5F4) : const Color(0xFFE5ECE9)),
+                      width: (paidThisMonth || isNoVisitThisMonth) ? 1.1 : 0.7,
                     ),
                   ),
                   child: ListTile(
@@ -2384,6 +2399,7 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                     ),
                   ),
                   title: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(
@@ -2391,28 +2407,59 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: paidThisMonth ? Colors.green.shade800 : Colors.black87,
+                            color: paidThisMonth
+                                ? Colors.green.shade800
+                                : (isNoVisitThisMonth ? const Color(0xFF6042A6) : Colors.black87),
                           ),
                         ),
                       ),
-                      if (paidThisMonth)
-                        Container(
-                          margin: const EdgeInsets.only(left: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.green.shade600)),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.check, size: 10, color: Colors.green),
-                              SizedBox(width: 2),
-                              Text('এই মাসে আদায়', style: TextStyle(fontSize: 8, color: Colors.green, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        ),
-                      if (st != 'ACTIVE')
-                        Container(margin: const EdgeInsets.only(left: 4), padding: const EdgeInsets.symmetric(horizontal: 4), decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4)), child: Text(st == 'RELOCATED' ? 'স্থানান্তরিত' : (st == 'CLOSED' ? 'ফাঁকা/বন্ধ' : 'মরহুম'), style: const TextStyle(fontSize: 9)))
-                      else if (isY)
-                        Container(margin: const EdgeInsets.only(left: 4), padding: const EdgeInsets.symmetric(horizontal: 4), decoration: BoxDecoration(color: Colors.orange.shade100, borderRadius: BorderRadius.circular(4)), child: const Text('বাৎসরিক', style: TextStyle(fontSize: 9, color: Colors.deepOrange, fontWeight: FontWeight.bold))),
+                      const SizedBox(width: 6),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (paidThisMonth)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 3),
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade100,
+                                borderRadius: BorderRadius.circular(5),
+                                border: Border.all(color: Colors.green.shade600),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.check, size: 10, color: Colors.green),
+                                  SizedBox(width: 2),
+                                  Text('এই মাসে আদায়', style: TextStyle(fontSize: 8, color: Colors.green, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ),
+                          if (isY)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 3),
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(color: Colors.orange.shade100, borderRadius: BorderRadius.circular(5)),
+                              child: const Text('বাৎসরিক', style: TextStyle(fontSize: 9, color: Colors.deepOrange, fontWeight: FontWeight.bold)),
+                            ),
+                          if (st != 'ACTIVE' && st != 'NO_VISIT')
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(5)),
+                              child: Text(
+                                st == 'RELOCATED' ? 'স্থানান্তরিত' : (st == 'CLOSED' ? 'ফাঁকা/বন্ধ' : 'মরহুম'),
+                                style: const TextStyle(fontSize: 9),
+                              ),
+                            ),
+                          if (isNoVisitThisMonth)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(color: const Color(0xFFE4D9FF), borderRadius: BorderRadius.circular(5)),
+                              child: const Text('এই মাসে যাব না', style: TextStyle(fontSize: 9, color: Color(0xFF6042A6), fontWeight: FontWeight.bold)),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                   subtitle: Column(
@@ -2422,34 +2469,10 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                         '${m['lp_text']} | ধার্য: ${BHelper.taka(isY ? (m['monthly_rate'] as int) * 12 : (m['monthly_rate'] as int))}${isY ? "/বছর" : "/মাস"}',
                         style: TextStyle(fontSize: 11, color: isCov ? Colors.teal[800] : Colors.orange[900]),
                       ),
-                      if (isVisitDeferred)
-                        Text(
-                          '${skipUntil == currentPeriod ? "এই মাসে যোগাযোগ করুন" : "এই মাসে যাবেন না"} • যোগাযোগ: ${BHelper.mNames[int.parse(skipUntil.substring(5, 7))]} ${BHelper.toBn(int.parse(skipUntil.substring(0, 4)))}',
-                          style: const TextStyle(fontSize: 10, color: Color(0xFF9A6500), fontWeight: FontWeight.bold),
-                        ),
+
                     ],
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        tooltip: isVisitDeferred ? 'যোগাযোগের মাস পরিবর্তন' : 'এই মাসে যাব না / পরের যোগাযোগের মাস',
-                        icon: Icon(isVisitDeferred ? Icons.event_busy : Icons.event_available,
-                            size: 20, color: isVisitDeferred ? Colors.orange.shade800 : Colors.blueGrey),
-                        onPressed: () => _setVisitReminder(m),
-                      ),
-                      if (isVisitDeferred)
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          tooltip: 'মনে রাখার চিহ্ন সরান',
-                          icon: const Icon(Icons.close, size: 17, color: Colors.redAccent),
-                          onPressed: () => _clearVisitReminder(m),
-                        ),
-                      const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
-                    ],
-                  ),
-                  ),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
                 );
               },
             ),
