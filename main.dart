@@ -2261,11 +2261,13 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                 // মাস নির্বাচন ও নগদ আদায়—দুই পাশে সমান প্রস্থ
                 Expanded(
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.max,
                     children: [
                       IconButton(
                         icon: const Icon(Icons.chevron_left, size: 22),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+                        constraints: const BoxConstraints(minWidth: 28, minHeight: 34),
                         onPressed: () {
                           setState(() {
                             if (_cMonth == 1) {
@@ -2278,21 +2280,19 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                           _refresh();
                         },
                       ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          '${BHelper.mNames[_cMonth]} ${BHelper.toBn(_cYear % 100)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${BHelper.mNames[_cMonth]} ${BHelper.toBn(_cYear)}',
+                        maxLines: 1,
+                        softWrap: false,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 2),
                       IconButton(
                         icon: const Icon(Icons.chevron_right, size: 22),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+                        constraints: const BoxConstraints(minWidth: 28, minHeight: 34),
                         onPressed: () {
                           setState(() {
                             if (_cMonth == 12) {
