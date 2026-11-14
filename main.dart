@@ -2418,7 +2418,7 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                       ),
                       const SizedBox(width: 6),
                       Transform.translate(
-                        offset: const Offset(58, 0),
+                        offset: const Offset(30, 0),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.end,
