@@ -2157,24 +2157,82 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
           ),
           
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), color: Colors.teal.shade50,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            color: Colors.teal.shade50,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(children: [
-                  IconButton(icon: const Icon(Icons.chevron_left, size: 22), padding: EdgeInsets.zero, constraints: const BoxConstraints(), onPressed: () { setState(() { if (_cMonth == 1) { _cMonth = 12; _cYear--; } else { _cMonth--; } }); _refresh(); }),
-                  const SizedBox(width: 6),
-                  Text('${BHelper.mNames[_cMonth]} ${BHelper.toBn(_cYear)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  const SizedBox(width: 6),
-                  IconButton(icon: const Icon(Icons.chevron_right, size: 22), padding: EdgeInsets.zero, constraints: const BoxConstraints(), onPressed: () { setState(() { if (_cMonth == 12) { _cMonth = 1; _cYear++; } else { _cMonth++; } }); _refresh(); }),
-                ]),
-                InkWell(
-                  borderRadius: BorderRadius.circular(6),
-                  onTap: _showThisMonthPaidMembers,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(color: Colors.teal.shade100, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.teal.shade300)),
-                    child: Text('নগদ আদায়: ${BHelper.taka(_mChanda)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.teal[900])),
+                // মাস নির্বাচন ও নগদ আদায়—দুই পাশে সমান প্রস্থ
+                Expanded(
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left, size: 22),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          setState(() {
+                            if (_cMonth == 1) {
+                              _cMonth = 12;
+                              _cYear--;
+                            } else {
+                              _cMonth--;
+                            }
+                          });
+                          _refresh();
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '${BHelper.mNames[_cMonth]} ${BHelper.toBn(_cYear)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right, size: 22),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          setState(() {
+                            if (_cMonth == 12) {
+                              _cMonth = 1;
+                              _cYear++;
+                            } else {
+                              _cMonth++;
+                            }
+                          });
+                          _refresh();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: _showThisMonthPaidMembers,
+                    child: Container(
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.shade100,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.teal.shade300),
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'নগদ আদায়: ${BHelper.taka(_mChanda)}',
+                          maxLines: 1,
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.teal[900]),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
