@@ -2335,9 +2335,22 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                 final currentPeriod = '${_cYear}-${_cMonth.toString().padLeft(2, '0')}';
                 final isVisitDeferred = skipUntil.isNotEmpty && skipUntil.compareTo(currentPeriod) >= 0;
 
-                return ListTile(
-                  dense: true, visualDensity: const VisualDensity(vertical: -1),
-                  tileColor: paidThisMonth ? const Color(0xFFE4F4E9) : null,
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  elevation: 1.5,
+                  shadowColor: const Color(0xFF174D43).withOpacity(0.10),
+                  color: paidThisMonth ? const Color(0xFFE8F6EC) : Colors.white,
+                  surfaceTintColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: paidThisMonth ? const Color(0xFF9ACDAB) : const Color(0xFFE5ECE9),
+                      width: paidThisMonth ? 1.1 : 0.7,
+                    ),
+                  ),
+                  child: ListTile(
+                  dense: false, visualDensity: const VisualDensity(vertical: 0),
+                  tileColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(9),
                     side: paidThisMonth ? const BorderSide(color: Color(0xFF9ACDAB), width: 0.8) : BorderSide.none,
@@ -2436,6 +2449,7 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                       const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
                     ],
                   ),
+                  ),
                 );
               },
             ),
@@ -2511,9 +2525,20 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
             itemBuilder: (ctx, idx) {
               final e = filtered[idx], isInc = e['type'] == 'INCOME', isTrf = e['type'] == 'TRANSFER', meth = e['payment_method'];
               String ml = meth == 'BANK' ? 'ব্যাংক' : (meth == 'CASH_TO_BANK' ? 'ক্যাশ➔ব্যাংক' : (meth == 'BANK_TO_CASH' ? 'ব্যাংক➔ক্যাশ' : 'নগদ'));
-              return ListTile(
-                dense: true,
-                visualDensity: const VisualDensity(vertical: -2),
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                elevation: 1,
+                shadowColor: const Color(0xFF263B44).withOpacity(0.08),
+                color: Colors.white,
+                surfaceTintColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: const BorderSide(color: Color(0xFFE6ECEA), width: 0.7),
+                ),
+                child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                dense: false,
+                visualDensity: const VisualDensity(vertical: 0),
                 onTap: () => _showCashbookDetails(e),
                 title: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   Text(e['category'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -2551,6 +2576,7 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                       },
                     ),
                   ],
+                ),
                 ),
               );
             },
@@ -2723,12 +2749,16 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
 
   Widget _buildAuditTab() {
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
       children: [
         Card(
-          color: Colors.teal.shade50,
+          margin: EdgeInsets.zero,
+          elevation: 2,
+          shadowColor: const Color(0xFF087F70).withOpacity(0.12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          color: const Color(0xFFE5F4F2),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2777,8 +2807,12 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
             ),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 16),
         Card(
+          margin: EdgeInsets.zero,
+          elevation: 2,
+          shadowColor: const Color(0xFF263B44).withOpacity(0.08),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           color: Colors.white,
           child: Column(
             children: [
@@ -2806,20 +2840,23 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 16),
 
         // টেলিগ্রাম ক্লাউড ব্যাকআপ কার্ড
         Card(
+          margin: EdgeInsets.zero,
+          elevation: 2,
+          shadowColor: const Color(0xFF263B44).withOpacity(0.08),
           color: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.send, color: Colors.blue, size: 22),
+                    Icon(Icons.send, color: Colors.blue, size: 24),
                     SizedBox(width: 8),
                     Text('টেলিগ্রাম ক্লাউড ব্যাকআপ (অটো ও ম্যানুয়াল)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                   ],
@@ -2853,19 +2890,33 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
           ),
         ),
 
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
 
-        ListTile(
-          tileColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        Card(
+          margin: EdgeInsets.zero,
+          elevation: 1.5,
+          color: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          tileColor: Colors.transparent,
           leading: const Icon(Icons.folder_open, color: Colors.green),
           title: const Text('JSON ফাইল থেকে সরাসরি রিস্টোর করুন', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
           subtitle: const Text('ফোন থেকে .json ব্যাকআপ ফাইল নির্বাচন করে ডাটা ফিরিয়ে আনুন', style: TextStyle(fontSize: 9)),
           onTap: _pickJsonBackupAndRestore,
+          ),
         ),
 
-        ListTile(
-          tileColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        Card(
+          margin: EdgeInsets.zero,
+          elevation: 1.5,
+          color: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          tileColor: Colors.transparent,
           leading: const Icon(Icons.settings_backup_restore, color: Colors.green),
           title: const Text('কোড পেস্ট করে রিস্টোর করুন', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
           subtitle: const Text('টেলিগ্রাম বা ব্যাকআপ ফাইলের কোড পেস্ট করে ডাটা ফিরিয়ে আনুন', style: TextStyle(fontSize: 9)),
@@ -2907,6 +2958,7 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
               ),
             );
           },
+          ),
         ),
       ],
     );
