@@ -49,7 +49,81 @@ class MiaparaApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     title: 'মিয়াপাড়া কেন্দ্রীয় জামে মসজিদ',
     debugShowCheckedModeBanner: false,
-    theme: ThemeData(primarySwatch: Colors.teal, useMaterial3: true, scaffoldBackgroundColor: const Color(0xFFF4F6F6)),
+    theme: ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF087F70),
+        brightness: Brightness.light,
+      ),
+      scaffoldBackgroundColor: const Color(0xFFF3F7F6),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF086B60),
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 2,
+        surfaceTintColor: Colors.transparent,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+          side: const BorderSide(color: Color(0xFFB7D5CE)),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(color: Color(0xFFDCE8E4)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(color: Color(0xFFDCE8E4)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(color: Color(0xFF087F70), width: 1.6),
+        ),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: Color(0xFF087F70),
+        foregroundColor: Colors.white,
+        elevation: 3,
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Colors.white,
+        selectedItemColor: Color(0xFF087F70),
+        unselectedItemColor: Color(0xFF81918C),
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 10),
+        type: BottomNavigationBarType.fixed,
+        elevation: 10,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: Color(0xFFE5EEEA),
+        thickness: 1,
+        space: 1,
+      ),
+    ),
     home: const MainScreen(),
   );
 }
@@ -1891,10 +1965,16 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, height: 1.2),
         ),
-        backgroundColor: Colors.teal[800],
+        backgroundColor: const Color(0xFF086B60),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
       ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _tab, selectedItemColor: Colors.teal[800],
+        currentIndex: _tab,
+        backgroundColor: Colors.white,
+        elevation: 10,
+        selectedItemColor: const Color(0xFF087F70),
+        unselectedItemColor: const Color(0xFF81918C),
         onTap: (i) => setState(() => _tab = i),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.people), label: 'চাঁদা খাতা'),
@@ -2088,7 +2168,8 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
 
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.teal[800], icon: const Icon(Icons.person_add, color: Colors.white, size: 16),
+        elevation: 3,
+        backgroundColor: const Color(0xFF087F70), icon: const Icon(Icons.person_add, color: Colors.white, size: 16),
         label: const Text('নতুন সদস্য', style: TextStyle(color: Colors.white, fontSize: 12)),
         onPressed: () => _addMember(),
       ),
