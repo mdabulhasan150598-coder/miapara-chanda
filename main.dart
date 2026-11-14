@@ -2194,7 +2194,7 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                 final paidThisMonth = m['paid_this_month'] as bool? ?? false;
                 final skipUntil = (m['skip_until'] ?? '').toString();
                 final currentPeriod = '${_cYear}-${_cMonth.toString().padLeft(2, '0')}';
-                final isVisitDeferred = skipUntil.isNotEmpty && skipUntil.compareTo(currentPeriod) > 0;
+                final isVisitDeferred = skipUntil.isNotEmpty && skipUntil.compareTo(currentPeriod) >= 0;
 
                 return ListTile(
                   dense: true, visualDensity: const VisualDensity(vertical: -1),
@@ -2272,7 +2272,7 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                       ),
                       if (isVisitDeferred)
                         Text(
-                          'এই মাসে যাবেন না • যোগাযোগ: ${BHelper.mNames[int.parse(skipUntil.substring(5, 7))]} ${BHelper.toBn(int.parse(skipUntil.substring(0, 4)))}',
+                          '${skipUntil == currentPeriod ? "এই মাসে যোগাযোগ করুন" : "এই মাসে যাবেন না"} • যোগাযোগ: ${BHelper.mNames[int.parse(skipUntil.substring(5, 7))]} ${BHelper.toBn(int.parse(skipUntil.substring(0, 4)))}',
                           style: const TextStyle(fontSize: 10, color: Color(0xFF9A6500), fontWeight: FontWeight.bold),
                         ),
                     ],
@@ -2286,8 +2286,14 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                         icon: Icon(isVisitDeferred ? Icons.event_busy : Icons.event_available,
                             size: 20, color: isVisitDeferred ? Colors.orange.shade800 : Colors.blueGrey),
                         onPressed: () => _setVisitReminder(m),
-                        onLongPress: isVisitDeferred ? () => _clearVisitReminder(m) : null,
                       ),
+                      if (isVisitDeferred)
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          tooltip: 'মনে রাখার চিহ্ন সরান',
+                          icon: const Icon(Icons.close, size: 17, color: Colors.redAccent),
+                          onPressed: () => _clearVisitReminder(m),
+                        ),
                       const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
                     ],
                   ),
