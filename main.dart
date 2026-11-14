@@ -69,7 +69,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   bool _backupInProgress = false;
   Timer? _autoBackupTimer;
   Timer? _periodicAutoBackupTimer;
-  String _pin = '', _search = '', _mFilter = 'ALL', _cFilter = 'ALL';
+  String _pin = '', _search = '', _mFilter = 'MONTHLY', _cFilter = 'ALL';
   final _pinCtrl = TextEditingController(), _sCtrl = TextEditingController();
   int _cYear = DateTime.now().year, _cMonth = DateTime.now().month;
   int _opCash = 0, _opBank = 0, _cash = 0, _bank = 0, _mChanda = 0, _mInc = 0, _mExp = 0;
@@ -96,7 +96,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       p.join(await getDatabasesPath(), 'miapara_mosque_master_v8.db'),
       version: 1,
       onCreate: (db, v) async {
-        await db.execute('CREATE TABLE members (id INTEGER PRIMARY KEY AUTOINCREMENT, book_sl INTEGER, name TEXT, phone TEXT, address TEXT DEFAULT "", monthly_rate INTEGER, member_type TEXT DEFAULT "MONTHLY", status TEXT DEFAULT "ACTIVE")');
+        await db.execute('CREATE TABLE members (id INTEGER PRIMARY KEY AUTOINCREMENT, book_sl INTEGER, name TEXT, phone TEXT, address TEXT DEFAULT "", monthly_rate INTEGER, member_type TEXT DEFAULT "MONTHLY", status TEXT DEFAULT "ACTIVE", skip_until TEXT DEFAULT "")');
         await db.execute('CREATE TABLE collections (id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER, year INTEGER, month INTEGER, amount INTEGER, receipt_no TEXT, date TEXT, type TEXT, note TEXT)');
         await db.execute('CREATE TABLE cashbook (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, category TEXT, amount INTEGER, payment_method TEXT, voucher_no TEXT, date TEXT, note TEXT)');
         await db.execute('CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)');
@@ -110,6 +110,19 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         final memberColumns = await db.rawQuery('PRAGMA table_info(members)');
         if (!memberColumns.any((c) => c['name'] == 'address')) {
           await db.execute("ALTER TABLE members ADD COLUMN address TEXT DEFAULT ''");
+        }
+        if (!memberColumns.any((c) => c['name'] == 'skip_until')) {
+          await db.execute("ALTER TABLE members ADD COLUMN skip_until TEXT DEFAULT ''");
+        }
+        // বাৎসরিক ধার্যকে পূর্ণ টাকায় স্থিতিশীল রাখতে ভাগের ভগ্নাংশ সমন্বয়।
+        final yearlyMembers = await db.query('members', where: 'member_type=?', whereArgs: ['YEARLY']);
+        for (final member in yearlyMembers) {
+          final oldRate = member['monthly_rate'] as int? ?? 0;
+          final annualTaka = (oldRate * 12 + 50) ~/ 100;
+          final correctedRate = (annualTaka * 100 + 11) ~/ 12;
+          if (oldRate != correctedRate) {
+            await db.update('members', {'monthly_rate': correctedRate}, where: 'id=?', whereArgs: [member['id']]);
+          }
         }
         await db.execute('CREATE TABLE IF NOT EXISTS custom_categories (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, name TEXT UNIQUE)');
         await db.execute('CREATE TABLE IF NOT EXISTS cashbook_items (id INTEGER PRIMARY KEY AUTOINCREMENT, cashbook_id INTEGER, title TEXT, amount INTEGER, date TEXT)');
@@ -196,6 +209,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         'lp_text': lpText,
         'covered': covered,
         'paid_this_month': thisMonthPaidCount > 0,
+        'skip_until': (m['skip_until'] ?? '').toString(),
       });
     }
     _members = res;
@@ -486,7 +500,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
       // একক transaction: মাঝপথে কোনো সমস্যা হলে আগের ডাটা স্বয়ংক্রিয়ভাবে ফিরে থাকবে।
       await _db!.transaction((txn) async {
-        await txn.execute('CREATE TABLE IF NOT EXISTS members (id INTEGER PRIMARY KEY AUTOINCREMENT, book_sl INTEGER, name TEXT, phone TEXT, address TEXT DEFAULT "", monthly_rate INTEGER, member_type TEXT DEFAULT "MONTHLY", status TEXT DEFAULT "ACTIVE")');
+        await txn.execute('CREATE TABLE IF NOT EXISTS members (id INTEGER PRIMARY KEY AUTOINCREMENT, book_sl INTEGER, name TEXT, phone TEXT, address TEXT DEFAULT "", monthly_rate INTEGER, member_type TEXT DEFAULT "MONTHLY", status TEXT DEFAULT "ACTIVE", skip_until TEXT DEFAULT "")');
         await txn.execute('CREATE TABLE IF NOT EXISTS collections (id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER, year INTEGER, month INTEGER, amount INTEGER, receipt_no TEXT, date TEXT, type TEXT, note TEXT)');
         await txn.execute('CREATE TABLE IF NOT EXISTS cashbook (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, category TEXT, amount INTEGER, payment_method TEXT, voucher_no TEXT, date TEXT, note TEXT)');
         await txn.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)');
@@ -502,7 +516,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         await txn.delete('custom_categories');
         await txn.delete('cashbook_items');
 
-        const mCols = {'id', 'book_sl', 'name', 'phone', 'address', 'monthly_rate', 'member_type', 'status'};
+        const mCols = {'id', 'book_sl', 'name', 'phone', 'address', 'monthly_rate', 'member_type', 'status', 'skip_until'};
         for (final r in members) {
           final row = Map<String, dynamic>.from(r)..removeWhere((k, v) => !mCols.contains(k));
           await txn.insert('members', row, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -715,7 +729,7 @@ void _addMember({Map<String, dynamic>? member}) {
     final pC = TextEditingController(text: member?['phone'] ?? '');
     final addressC = TextEditingController(text: member?['address'] ?? '');
     String type = member?['member_type'] ?? 'MONTHLY', st = member?['status'] ?? 'ACTIVE';
-    final rC = TextEditingController(text: member != null ? ((type == 'YEARLY' ? member['monthly_rate'] * 12 : member['monthly_rate']) ~/ 100).toString() : '200');
+    final rC = TextEditingController(text: member != null ? (type == 'YEARLY' ? ((member['monthly_rate'] * 12 + 50) ~/ 100) : (member['monthly_rate'] ~/ 100)).toString() : '200');
 
     showDialog(
       context: context,
@@ -750,7 +764,7 @@ void _addMember({Map<String, dynamic>? member}) {
               onPressed: () async {
                 if (nC.text.trim().isEmpty) return;
                 int bSl = int.tryParse(slC.text) ?? (_members.length + 1);
-                int mR = type == 'YEARLY' ? ((int.tryParse(rC.text) ?? 2400) * 100 ~/ 12) : ((int.tryParse(rC.text) ?? 200) * 100);
+                int mR = type == 'YEARLY' ? (((int.tryParse(rC.text) ?? 2400) * 100 + 11) ~/ 12) : ((int.tryParse(rC.text) ?? 200) * 100);
                 if (member == null) {
                   await _db!.insert('members', {'book_sl': bSl, 'name': nC.text.trim(), 'phone': pC.text.trim(), 'address': addressC.text.trim(), 'monthly_rate': mR, 'member_type': type, 'status': st});
                 } else {
@@ -2027,6 +2041,39 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
     );
   }
 
+  Future<void> _setVisitReminder(Map<String, dynamic> member) async {
+    final currentMonth = DateTime(_cYear, _cMonth, 1);
+    final firstAllowed = DateTime(currentMonth.year, currentMonth.month + 1, 1);
+    final currentValue = (member['skip_until'] ?? '').toString();
+    DateTime initial = firstAllowed;
+    if (currentValue.length == 7) {
+      final parsed = DateTime.tryParse('$currentValue-01');
+      if (parsed != null && !parsed.isBefore(firstAllowed)) initial = parsed;
+    }
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: firstAllowed,
+      lastDate: DateTime(2035, 12, 31),
+      helpText: 'কোন মাসে আবার যোগাযোগ করবেন?',
+      fieldLabelText: 'পরবর্তী যোগাযোগের তারিখ',
+    );
+    if (picked == null) return;
+    final value = '${picked.year}-${picked.month.toString().padLeft(2, '0')}';
+    await _db!.update('members', {'skip_until': value}, where: 'id=?', whereArgs: [member['id']]);
+    await _refresh();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${member['name']} — ${BHelper.mNames[picked.month]} ${BHelper.toBn(picked.year)} মাসে যোগাযোগের জন্য মনে রাখা হয়েছে।')),
+      );
+    }
+  }
+
+  Future<void> _clearVisitReminder(Map<String, dynamic> member) async {
+    await _db!.update('members', {'skip_until': ''}, where: 'id=?', whereArgs: [member['id']]);
+    await _refresh();
+  }
+
   Widget _buildChandaTab() {
     final filtered = _members.where((m) {
       final n = m['name'].toString().toLowerCase(), p = (m['phone'] ?? '').toString(), s = (m['book_sl'] ?? '').toString();
@@ -2145,6 +2192,9 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                 final st = m['status'];
                 final bSl = m['book_sl'] ?? (idx + 1);
                 final paidThisMonth = m['paid_this_month'] as bool? ?? false;
+                final skipUntil = (m['skip_until'] ?? '').toString();
+                final currentPeriod = '${_cYear}-${_cMonth.toString().padLeft(2, '0')}';
+                final isVisitDeferred = skipUntil.isNotEmpty && skipUntil.compareTo(currentPeriod) > 0;
 
                 return ListTile(
                   dense: true, visualDensity: const VisualDensity(vertical: -1),
@@ -2213,11 +2263,34 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                         Container(margin: const EdgeInsets.only(left: 4), padding: const EdgeInsets.symmetric(horizontal: 4), decoration: BoxDecoration(color: Colors.orange.shade100, borderRadius: BorderRadius.circular(4)), child: const Text('বাৎসরিক', style: TextStyle(fontSize: 9, color: Colors.deepOrange, fontWeight: FontWeight.bold))),
                     ],
                   ),
-                  subtitle: Text(
-                    '${m['lp_text']} | ধার্য: ${BHelper.taka(isY ? (m['monthly_rate'] as int) * 12 : (m['monthly_rate'] as int))}${isY ? "/বছর" : "/মাস"}',
-                    style: TextStyle(fontSize: 11, color: isCov ? Colors.teal[800] : Colors.orange[900]),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${m['lp_text']} | ধার্য: ${BHelper.taka(isY ? (m['monthly_rate'] as int) * 12 : (m['monthly_rate'] as int))}${isY ? "/বছর" : "/মাস"}',
+                        style: TextStyle(fontSize: 11, color: isCov ? Colors.teal[800] : Colors.orange[900]),
+                      ),
+                      if (isVisitDeferred)
+                        Text(
+                          'এই মাসে যাবেন না • যোগাযোগ: ${BHelper.mNames[int.parse(skipUntil.substring(5, 7))]} ${BHelper.toBn(int.parse(skipUntil.substring(0, 4)))}',
+                          style: const TextStyle(fontSize: 10, color: Color(0xFF9A6500), fontWeight: FontWeight.bold),
+                        ),
+                    ],
                   ),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        tooltip: isVisitDeferred ? 'যোগাযোগের মাস পরিবর্তন' : 'এই মাসে যাব না / পরের যোগাযোগের মাস',
+                        icon: Icon(isVisitDeferred ? Icons.event_busy : Icons.event_available,
+                            size: 20, color: isVisitDeferred ? Colors.orange.shade800 : Colors.blueGrey),
+                        onPressed: () => _setVisitReminder(m),
+                        onLongPress: isVisitDeferred ? () => _clearVisitReminder(m) : null,
+                      ),
+                      const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+                    ],
+                  ),
                 );
               },
             ),
