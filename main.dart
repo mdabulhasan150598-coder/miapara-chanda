@@ -2260,7 +2260,6 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
               children: [
                 // মাস নির্বাচন ও নগদ আদায়—দুই পাশে সমান প্রস্থ
                 Expanded(
-                  flex: 11,
                   child: Row(
                     children: [
                       IconButton(
@@ -2282,7 +2281,7 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          '${BHelper.mNames[_cMonth]} ${BHelper.toBn(_cYear)}',
+                          '${BHelper.mNames[_cMonth]} ${BHelper.toBn(_cYear % 100)}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
@@ -2311,7 +2310,6 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  flex: 10,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(6),
                     onTap: _showThisMonthPaidMembers,
