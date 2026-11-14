@@ -2473,6 +2473,7 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                     ],
                   ),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+                  ),
                 );
               },
             ),
