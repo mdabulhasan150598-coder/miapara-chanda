@@ -2414,10 +2414,12 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
+                      Transform.translate(
+                        offset: const Offset(9, 0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
                           if (paidThisMonth)
                             Container(
                               margin: const EdgeInsets.only(bottom: 3),
@@ -2458,7 +2460,8 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                               decoration: BoxDecoration(color: const Color(0xFFE4D9FF), borderRadius: BorderRadius.circular(5)),
                               child: const Text('এই মাসে যাব না', style: TextStyle(fontSize: 9, color: Color(0xFF6042A6), fontWeight: FontWeight.bold)),
                             ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
