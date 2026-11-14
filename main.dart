@@ -2261,7 +2261,7 @@ void _showAddCategoryDialog(bool isInc, Function(String) onAdded) {
                 // মাস নির্বাচন ও নগদ আদায়—দুই পাশে সমান প্রস্থ
                 Expanded(
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     mainAxisSize: MainAxisSize.max,
                     children: [
                       IconButton(
